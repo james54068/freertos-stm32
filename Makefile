@@ -21,6 +21,7 @@ CFLAGS = -mcpu=$(CPU) -march=armv7e-m -mtune=cortex-m4
 CFLAGS += -mlittle-endian -mthumb
 # Need study
 CFLAGS += -mfpu=fpv4-sp-d16 -mfloat-abi=softfp -O0
+CFLAGS += --specs=nano.specs 
 
 define get_library_path
     $(shell dirname $(shell $(CC) $(CFLAGS) -print-file-name=$(1)))
@@ -31,6 +32,9 @@ LDFLAGS += -L $(call get_library_path,libgcc.a)
 # Basic configurations
 CFLAGS += -g -std=c99
 CFLAGS += -Wall
+
+#USER NAME
+CFLAGS += -DUSER_NAME=\"$(USER)\"
 
 # Optimizations
 CFLAGS += -g -std=c99 -O3 -ffast-math
@@ -55,7 +59,6 @@ CFLAGS += -D"assert_param(expr)=((void)0)"
 
 #My restart
 OBJS += \
-      $(PWD)/CORTEX_M4F_STM32F4/main.o \
       $(PWD)/CORTEX_M4F_STM32F4/startup/system_stm32f4xx.o \
       #$(PWD)/CORTEX_M4F_STM32F4/stm32f4xx_it.o \
 
@@ -89,9 +92,27 @@ OBJS += \
     $(PWD)/Utilities/STM32F429I-Discovery/stm32f429i_discovery_ioe.o
 
 # Traffic
+OBJS += $(PWD)/CORTEX_M4F_STM32F4/traffic/main.o
 OBJS += $(PWD)/CORTEX_M4F_STM32F4/traffic/draw_graph.o
 OBJS += $(PWD)/CORTEX_M4F_STM32F4/traffic/move_car.o
+OBJS += $(PWD)/CORTEX_M4F_STM32F4/traffic/usart.o
+OBJS += $(PWD)/CORTEX_M4F_STM32F4/traffic/shell.o
 CFLAGS += -I $(PWD)/CORTEX_M4F_STM32F4/traffic/include
+#Plus shell
+# OBJS += $(PWD)/CORTEX_M4F_STM32F4/plusshell/src/main.o
+# OBJS += $(PWD)/CORTEX_M4F_STM32F4/plusshell/src/shell.o
+# OBJS += $(PWD)/CORTEX_M4F_STM32F4/plusshell/src/romfs.o
+# OBJS += $(PWD)/CORTEX_M4F_STM32F4/plusshell/src/filesystem.o
+# OBJS += $(PWD)/CORTEX_M4F_STM32F4/plusshell/src/fio.o
+# OBJS += $(PWD)/CORTEX_M4F_STM32F4/plusshell/src/hash-djb2.o
+# OBJS += $(PWD)/CORTEX_M4F_STM32F4/plusshell/src/host.o
+# OBJS += $(PWD)/CORTEX_M4F_STM32F4/plusshell/src/string-util.o
+# OBJS += $(PWD)/CORTEX_M4F_STM32F4/plusshell/src/stm32_p103.o
+# OBJS += $(PWD)/CORTEX_M4F_STM32F4/plusshell/src/mmtest.o
+# OBJS += $(PWD)/CORTEX_M4F_STM32F4/plusshell/src/clib.o
+# CFLAGS += -I $(PWD)/CORTEX_M4F_STM32F4/plusshell/inc
+
+
 
 CFLAGS += -DUSE_STDPERIPH_DRIVER
 CFLAGS += -I $(PWD)/CORTEX_M4F_STM32F4 \
@@ -113,7 +134,7 @@ $(BIN_IMAGE): $(EXECUTABLE)
 	
 $(EXECUTABLE): $(OBJS)
 	$(LD) -o $@ $(OBJS) \
-		--start-group $(LIBS) --end-group \
+		--start-group $(LIBS) -lgcc -lc -lm -lnosys --end-group \
 		$(LDFLAGS)
 
 %.o: %.c
@@ -124,6 +145,9 @@ $(EXECUTABLE): $(OBJS)
 
 flash:
 	st-flash write $(BIN_IMAGE) 0x8000000
+
+gdbtui:
+	arm-none-eabi-gdb -tui -x ./CORTEX_M4F_STM32F4/tool/gdbscript
 
 openocd_flash:
 	openocd \
